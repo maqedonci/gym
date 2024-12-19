@@ -1,65 +1,174 @@
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Scanner;
 
 public class Main {
+
     public static void main(String[] args) {
-        // Create an instance of AuthService to handle user registration and login
-        AuthService authService = new AuthService();
+        // Krijojmë disa koleksione për përdoruesit, anëtarët dhe trajnerët
+        List<User> users = new ArrayList<>();
+        List<Member> members = new ArrayList<>();
+        List<Trainer> trainers = new ArrayList<>();
+        MembershipService membershipService = new MembershipService();
 
-        // Create some users (Members and Trainers)
-        Trainer trainer1 = new Trainer(1, "John Doe", "john@example.com", "password123", "Yoga");
-        Trainer trainer2 = new Trainer(2, "Jane Smith", "jane@example.com", "password123", "Fitness");
+        Scanner scanner = new Scanner(System.in);
 
-        Member member1 = new Member(3, "Alice Brown", "alice@example.com", "password123", SubscriptionType.PREMIUM);
-        Member member2 = new Member(4, "Bob Green", "bob@example.com", "password123", SubscriptionType.BASIC);
+        // Pjesa ku përdoruesi mund të regjistrohet
+        System.out.println("Welcome to the Gym Management System!");
+        System.out.println("Please register to continue.");
 
-        // Register users
-        authService.register(trainer1);
-        authService.register(trainer2);
-        authService.register(member1);
-        authService.register(member2);
+        // Kërkojmë të dhënat për regjistrimin e përdoruesit
+        System.out.print("Enter your name: ");
+        String name = scanner.nextLine();
 
-        // Log in a user (example: Alice)
-        User loggedInUser = authService.login("alice@example.com", "password123");
+        System.out.print("Enter your email: ");
+        String email = scanner.nextLine();
 
-        if (loggedInUser != null) {
-            // If the login is successful, let's demonstrate some functionalities:
-            // If the logged in user is a member, allow joining sessions
-            if (loggedInUser instanceof Member) {
-                Member loggedInMember = (Member) loggedInUser;
+        System.out.print("Enter your password: ");
+        String password = scanner.nextLine();
 
-                // Create some sessions
-                Session session1 = new Session("Yoga Class", "2024-12-21", "10:00 AM");
-                Session session2 = new Session("Fitness Training", "2024-12-22", "11:00 AM");
+        // Krijojmë një objekt për përdoruesin (këtu mund të shtoni logjikën për të zgjedhur mes anëtarëve dhe trajnerëve)
+        System.out.print("Are you a member or trainer? (Enter 'member' or 'trainer'): ");
+        String role = scanner.nextLine().toLowerCase();
 
-                // Member joins a session
-                loggedInMember.joinSession(session1);
+        User newUser = null;
 
-                // Member tries to join another session (if Basic subscription, limit can be enforced)
-                loggedInMember.joinSession(session2);
+        if (role.equals("member")) {
+            // Show subscription details before choosing the subscription type
+            System.out.println("\nChoose your Subscription Type:");
+            System.out.println("1. BASIC - Access to all gym equipment (20 EUR/month)");
+            System.out.println("2. PREMIUM - Personal trainer support (40 EUR/month)");
+            System.out.println("3. VIP - Personal trainer and nutritionist support (120 EUR/month)");
+            System.out.print("Enter your subscription type (1, 2, or 3): ");
+            int subscriptionChoice = scanner.nextInt();
+            scanner.nextLine();  // Consume newline
 
-                // View trainer details
-                loggedInMember.viewTrainerDetails(trainer1);
+            // Set the subscription type based on user choice
+            SubscriptionType subscriptionType = null;
+            switch (subscriptionChoice) {
+                case 1:
+                    subscriptionType = SubscriptionType.BASIC;
+                    break;
+                case 2:
+                    subscriptionType = SubscriptionType.PREMIUM;
+                    break;
+                case 3:
+                    subscriptionType = SubscriptionType.VIP;
+                    break;
+                default:
+                    System.out.println("Invalid choice! Setting default subscription to BASIC.");
+                    subscriptionType = SubscriptionType.BASIC;
+                    break;
             }
 
-            // If the logged in user is a trainer, allow viewing members and scheduling sessions
-            if (loggedInUser instanceof Trainer) {
-                Trainer loggedInTrainer = (Trainer) loggedInUser;
-
-                // Trainer views their members
-                List<Member> members = new ArrayList<>();
-                members.add(member1);
-                members.add(member2);
-                loggedInTrainer.viewMembers(members);
-
-                // Trainer schedules a session
-                Session session3 = new Session("Advanced Yoga", "2024-12-23", "12:00 PM");
-                loggedInTrainer.scheduleSession(session3);
-            }
+            Member member = new Member(users.size() + 1, name, email, password, subscriptionType);
+            members.add(member);
+            newUser = member; // Regjistrimi si anëtar
+        } else if (role.equals("trainer")) {
+            System.out.print("Enter your specialization (e.g., Fitness, Yoga): ");
+            String specialization = scanner.nextLine();
+            Trainer trainer = new Trainer(users.size() + 1, name, email, password, specialization);
+            trainers.add(trainer);
+            newUser = trainer; // Regjistrimi si trajner
         } else {
-            System.out.println("Unable to log in.");
+            System.out.println("Invalid role! Please enter 'member' or 'trainer'.");
+            return;
         }
+
+        users.add(newUser);
+        System.out.println("User registered successfully: " + name);
+
+        // Pjesa ku përdoruesi mund të bëjë login
+        System.out.println("\nPlease log in to continue.");
+        System.out.print("Enter your email: ");
+        String loginEmail = scanner.nextLine();
+        System.out.print("Enter your password: ");
+        String loginPassword = scanner.nextLine();
+
+        // Kërkojmë përdoruesin në listë
+        User loggedInUser = null;
+        for (User user : users) {
+            if (user.login(loginEmail, loginPassword)) {
+                loggedInUser = user;
+                break;
+            }
+        }
+
+        if (loggedInUser == null) {
+            System.out.println("Login failed! Please check your credentials.");
+            return;
+        }
+
+        // Pas login-it, përdoruesi mund të zgjedhë opsionet
+        if (loggedInUser instanceof Member) {
+            Member member = (Member) loggedInUser;
+            System.out.println("\nHello " + member.getName() + "!");
+            System.out.println("Subscription Type: " + member.getSubscriptionType());
+
+            // Opsionet për anëtarin
+            System.out.println("1. Join a Session");
+            System.out.println("2. View Trainer Details");
+            System.out.print("Choose an option: ");
+            int choice = scanner.nextInt();
+            scanner.nextLine();  // Consume newline
+
+            if (choice == 1) {
+                // Join a session
+                System.out.print("Enter session title: ");
+                String title = scanner.nextLine();
+                System.out.print("Enter session date: ");
+                String date = scanner.nextLine();
+                System.out.print("Enter session time: ");
+                String time = scanner.nextLine();
+
+                Session session = new Session(title, date, time);
+                member.joinSession(session);
+            } else if (choice == 2) {
+                // View trainer details
+                System.out.println("Trainer Details:");
+                // Make sure to use the correct trainer object that the member is associated with
+                if (!trainers.isEmpty()) {
+                    Trainer trainer = trainers.get(0); // Assuming the first trainer for demonstration
+                    trainer.viewMembers(members); // Trainer can view members
+                }
+            } else {
+                System.out.println("Invalid choice.");
+            }
+        } else if (loggedInUser instanceof Trainer) {
+            Trainer trainer = (Trainer) loggedInUser;
+            System.out.println("\nHello Trainer " + trainer.getName() + "!");
+
+            // Opsionet për trajnerin
+            System.out.println("1. Schedule a Session");
+            System.out.println("2. View Members");
+            System.out.print("Choose an option: ");
+            int choice = scanner.nextInt();
+            scanner.nextLine();  // Consume newline
+
+            if (choice == 1) {
+                // Schedule a session
+                System.out.print("Enter session title: ");
+                String title = scanner.nextLine();
+                System.out.print("Enter session date: ");
+                String date = scanner.nextLine();
+                System.out.print("Enter session time: ");
+                String time = scanner.nextLine();
+
+                Session session = new Session(title, date, time);
+                trainer.scheduleSession(session);
+            } else if (choice == 2) {
+                // View members
+                trainer.viewMembers(members);  // Trainer can view members
+            } else {
+                System.out.println("Invalid choice.");
+            }
+        }
+
+        scanner.close();
     }
 }
+
+
+
 
 

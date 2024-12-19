@@ -1,3 +1,24 @@
 public enum SubscriptionType {
-    BASIC, PREMIUM, VIP
+    BASIC("Access to all gym equipment", 20),
+    PREMIUM("Personal trainer care", 80),
+    VIP("Personal trainer and nutritionist care", 160);
+
+    private final String description;
+    private final double price;
+
+    // Konstruktori
+    SubscriptionType(String description, double price) {
+        this.description = description;
+        this.price = price;
+    }
+
+    // Getters
+    public String getDescription() {
+        return description;
+    }
+
+    public double getPrice() {
+        return price;
+    }
 }
+

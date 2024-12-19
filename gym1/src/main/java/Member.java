@@ -13,6 +13,7 @@ public class Member extends User {
         this.activeSessions = new ArrayList<>();
     }
 
+
     // Getters dhe Setters
     public SubscriptionType getSubscriptionType() {
         return subscriptionType;
