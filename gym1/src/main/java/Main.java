@@ -1,3 +1,4 @@
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
@@ -31,52 +32,51 @@ public class Main {
         System.out.print("Are you a member or trainer? (Enter 'member' or 'trainer'): ");
         String role = scanner.nextLine().toLowerCase();
 
-        User newUser = null;
+        System.out.println("\nChoose your Subscription Type:");
+        System.out.println("1. BASIC - Access to all gym equipment (20 EUR/month)");
+        System.out.println("2. PREMIUM - Personal trainer support (40 EUR/month)");
+        System.out.println("3. VIP - Personal trainer and nutritionist support (120 EUR/month)");
+        System.out.print("Enter your subscription type (1, 2, or 3): ");
+        int subscriptionChoice = scanner.nextInt();
+        scanner.nextLine();  // Consume newline
 
-        if (role.equals("member")) {
-            // Show subscription details before choosing the subscription type
-            System.out.println("\nChoose your Subscription Type:");
-            System.out.println("1. BASIC - Access to all gym equipment (20 EUR/month)");
-            System.out.println("2. PREMIUM - Personal trainer support (40 EUR/month)");
-            System.out.println("3. VIP - Personal trainer and nutritionist support (120 EUR/month)");
-            System.out.print("Enter your subscription type (1, 2, or 3): ");
-            int subscriptionChoice = scanner.nextInt();
-            scanner.nextLine();  // Consume newline
-
-            // Set the subscription type based on user choice
-            SubscriptionType subscriptionType = null;
-            switch (subscriptionChoice) {
-                case 1:
-                    subscriptionType = SubscriptionType.BASIC;
-                    break;
-                case 2:
-                    subscriptionType = SubscriptionType.PREMIUM;
-                    break;
-                case 3:
-                    subscriptionType = SubscriptionType.VIP;
-                    break;
-                default:
-                    System.out.println("Invalid choice! Setting default subscription to BASIC.");
-                    subscriptionType = SubscriptionType.BASIC;
-                    break;
-            }
-
-            Member member = new Member(users.size() + 1, name, email, password, subscriptionType);
-            members.add(member);
-            newUser = member; // Regjistrimi si anëtar
-        } else if (role.equals("trainer")) {
-            System.out.print("Enter your specialization (e.g., Fitness, Yoga): ");
-            String specialization = scanner.nextLine();
-            Trainer trainer = new Trainer(users.size() + 1, name, email, password, specialization);
-            trainers.add(trainer);
-            newUser = trainer; // Regjistrimi si trajner
-        } else {
-            System.out.println("Invalid role! Please enter 'member' or 'trainer'.");
-            return;
+        SubscriptionType subscriptionType = null;
+        switch (subscriptionChoice) {
+            case 1:
+                subscriptionType = SubscriptionType.BASIC;
+                break;
+            case 2:
+                subscriptionType = SubscriptionType.PREMIUM;
+                break;
+            case 3:
+                subscriptionType = SubscriptionType.VIP;
+                break;
+            default:
+                System.out.println("Invalid choice! Setting default subscription to BASIC.");
+                subscriptionType = SubscriptionType.BASIC;
+                break;
         }
 
-        users.add(newUser);
-        System.out.println("User registered successfully: " + name);
+        // Insert user data into the database
+        try (Connection connection = DatabaseUtil.getConnection()) {
+            String insertQuery = "INSERT INTO users (name, email, password, role, subscription_type) VALUES (?, ?, ?, ?, ?)";
+            try (PreparedStatement stmt = connection.prepareStatement(insertQuery)) {
+                stmt.setString(1, name);
+                stmt.setString(2, email);
+                stmt.setString(3, password);
+                stmt.setString(4, role);
+                stmt.setString(5, subscriptionType.name());
+
+                int rowsAffected = stmt.executeUpdate();
+                if (rowsAffected > 0) {
+                    System.out.println("User registered successfully: " + name);
+                } else {
+                    System.out.println("Error during registration.");
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
 
         // Pjesa ku përdoruesi mund të bëjë login
         System.out.println("\nPlease log in to continue.");
@@ -85,18 +85,38 @@ public class Main {
         System.out.print("Enter your password: ");
         String loginPassword = scanner.nextLine();
 
-        // Kërkojmë përdoruesin në listë
+        // Check user in the database
         User loggedInUser = null;
-        for (User user : users) {
-            if (user.login(loginEmail, loginPassword)) {
-                loggedInUser = user;
-                break;
-            }
-        }
+        try (Connection connection = DatabaseUtil.getConnection()) {
+            String loginQuery = "SELECT * FROM users WHERE email = ? AND password = ?";
+            try (PreparedStatement stmt = connection.prepareStatement(loginQuery)) {
+                stmt.setString(1, loginEmail);
+                stmt.setString(2, loginPassword);
 
-        if (loggedInUser == null) {
-            System.out.println("Login failed! Please check your credentials.");
-            return;
+                ResultSet resultSet = stmt.executeQuery();
+                if (resultSet.next()) {
+                    String nameFromDb = resultSet.getString("name");
+                    String roleFromDb = resultSet.getString("role");
+                    String subscriptionTypeFromDb = resultSet.getString("subscription_type");
+
+                    // Based on role, create user object
+                    if (roleFromDb.equals("member")) {
+                        loggedInUser = new Member(resultSet.getInt("id"), nameFromDb, loginEmail, loginPassword, SubscriptionType.valueOf(subscriptionTypeFromDb));
+                    } else if (roleFromDb.equals("trainer")) {
+                        loggedInUser = new Trainer(resultSet.getInt("id"), nameFromDb, loginEmail, loginPassword, "Specialization");
+                    }
+
+                    System.out.println("\nLogin successful!");
+                    System.out.println("Name: " + nameFromDb);
+                    System.out.println("Role: " + roleFromDb);
+                    System.out.println("Subscription Type: " + subscriptionTypeFromDb);
+                } else {
+                    System.out.println("Login failed! Please check your credentials.");
+                    return;
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
         }
 
         // Pas login-it, përdoruesi mund të zgjedhë opsionet
@@ -167,6 +187,7 @@ public class Main {
         scanner.close();
     }
 }
+
 
 
 
