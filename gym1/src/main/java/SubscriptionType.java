@@ -1,7 +1,7 @@
 public enum SubscriptionType {
     BASIC("Access to all gym equipment", 20),
     PREMIUM("Personal trainer care", 80),
-    VIP("Personal trainer and nutritionist care", 160);
+    VIP(" Personal trainer and meal plan for everyday of the week (supplements included) ", 180);
 
     private final String description;
     private final double price;
